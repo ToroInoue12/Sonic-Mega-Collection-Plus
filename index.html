@@ -11,7 +11,7 @@
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Load Inter Font (Google's suggested clean sans-serif, matching the image style) -->
+    <!-- Load Inter Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
     <!-- Custom Tailwind Configuration for Dark/Neon Theme -->
@@ -26,7 +26,6 @@
                         'sonic-amber': '#FBBF24', // Amber for technical warnings
                     },
                     fontFamily: {
-                        // Reverting to a standard, readable font family
                         sans: ['Inter', 'system-ui', 'sans-serif'], 
                         mono: ['Consolas', 'Monospace'], 
                     },
@@ -43,9 +42,8 @@
             scroll-behavior: auto;
         }
         
-        /* Removing old pixel font size overrides for readability */
         body {
-            font-size: 16px; /* Resetting to standard size */
+            font-size: 16px; 
         }
 
         /* Custom CSS for the neon glow effect on titles */
@@ -154,38 +152,48 @@
         let audioIcon = null;
         let audioStatusText = null;
         
-        // Define the game data supported for launching (UPDATED with STH.html link)
+        // Define the game data supported for launching
         const GAME_DATA = {
             'sonic1': {
-                // LINK MODIFIED: Now points to the local STH.html file
+                // REMAINS STH.html 
                 url: 'STH.html', 
                 title: 'Sonic the Hedgehog (1991)',
                 youtubeEmbedSrc: 'https://www.youtube.com/embed/FbfZ6iDPQVc?autoplay=0&controls=1',
                 type: 'genesis',
             },
             'sonic_eraser': {
-                url: 'https://megadrive-emulator.com/game/?game=Sonic_Eraser.bin', 
+                // UPDATED URL: Eraser.html
+                url: 'Eraser.html', 
                 title: 'Sonic Eraser (1991)',
                 youtubeEmbedSrc: 'https://www.youtube.com/embed/g2qJpI5R37k?autoplay=0&controls=1', 
                 type: 'genesis',
             },
-            'blue_spheres': { // NEW ENTRY
-                // Using Sonic 3 & Knuckles as it contains the Blue Spheres special stage
-                url: 'https://megadrive-emulator.com/game/?game=Sonic_3_and_Knuckles.bin', 
+            'blue_spheres': { 
+                // UPDATED URL: BS.html
+                url: 'BS.html', 
                 title: 'Blue Spheres (Lock-On Bonus)',
-                youtubeEmbedSrc: 'https://www.youtube.com/embed/rGgQp9i9m6k?autoplay=0&controls=1', // Blue Spheres specific video
+                youtubeEmbedSrc: 'https://www.youtube.com/embed/rGgQp9i9m6k?autoplay=0&controls=1', 
                 type: 'genesis',
             },
-            'mean_bean': { // NEW ENTRY: Dr. Robotnik's Mean Bean Machine
-                url: 'https://megadrive-emulator.com/game/?game=Dr_Robotniks_Mean_Bean_Machine.bin',
+            'mean_bean': { 
+                // UPDATED URL: MBM.html
+                url: 'MBM.html',
                 title: 'Dr. Robotnik\'s Mean Bean Machine (1993)',
                 youtubeEmbedSrc: 'https://www.youtube.com/embed/qgqPqX-NqI8?autoplay=0&controls=1',
                 type: 'genesis',
             },
             'sonic2': { 
-                url: 'https://megadrive-emulator.com/game/?game=Sonic_the_Hedgehog_2_JUE.bin',
+                // UPDATED URL: STH2.html
+                url: 'STH2.html',
                 title: 'Sonic the Hedgehog 2 (1992)',
                 youtubeEmbedSrc: 'https://www.youtube.com/embed/zOQJm495b5Q?autoplay=0&controls=1', 
+                type: 'genesis',
+            },
+            'knuckles_in_sonic2': { 
+                // NEW GAME: Knuckles in Sonic 2
+                url: 'KIS2.html',
+                title: 'Knuckles in Sonic 2 (S2 Lock-On)',
+                youtubeEmbedSrc: 'https://www.youtube.com/embed/zOQJm495b5Q?autoplay=0&controls=1', // Using S2 trailer as placeholder
                 type: 'genesis',
             },
             'spinball': { 
@@ -195,19 +203,22 @@
                 type: 'genesis',
             },
             'sonic3': { 
-                url: 'https://megadrive-emulator.com/game/?game=Sonic_the_Hedgehog_3.bin',
+                // UPDATED URL: STH3.html
+                url: 'STH3.html',
                 title: 'Sonic the Hedgehog 3 (1994)',
                 youtubeEmbedSrc: 'https://www.youtube.com/embed/9tJ6u6j4Fv8?autoplay=0&controls=1', 
                 type: 'genesis',
             },
             'sonic_knuckles': { 
-                url: 'https://megadrive-emulator.com/game/?game=Sonic_and_Knuckles.bin',
+                // UPDATED URL: S&K.html
+                url: 'S&K.html',
                 title: 'Sonic & Knuckles (1994)',
                 youtubeEmbedSrc: 'https://www.youtube.com/embed/5H5z5J1B1nI?autoplay=0&controls=1', 
                 type: 'genesis',
             },
             'sonic3_knuckles': { 
-                url: 'https://megadrive-emulator.com/game/?game=Sonic_3_and_Knuckles.bin',
+                // UPDATED URL: S3&k.html
+                url: 'S3&k.html',
                 title: 'Sonic 3 & Knuckles (1994)',
                 youtubeEmbedSrc: 'https://www.youtube.com/embed/5H5z5J1B1nI?autoplay=0&controls=1', 
                 type: 'genesis',
@@ -219,8 +230,7 @@
                 type: 'genesis',
             },
             'sonicCD': { 
-                // LINK MODIFIED: Now points to the local SCD.html file
-                url: 'SCD.html', 
+                url: 'https://www.retrogames.cc/embed/40754-sonic-cd.html', 
                 title: 'Sonic CD (1993)',
                 youtubeEmbedSrc: 'https://www.youtube.com/embed/g2qJpI5R37k?autoplay=0&controls=1', 
                 type: 'sega-cd',
@@ -239,12 +249,12 @@
             }
         };
 
-        // Static HTML content for descriptions, inserted into the modal (UPDATED with Mean Bean Machine content)
+        // Static HTML content for descriptions, inserted into the modal
         const GAME_CONTENT = {
             'sonic1': `
                 <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1">Description</h3>
                 <p class="mb-4 text-lg">
-                    Sonic the Hedgehog is a 1991 platform game developed and published by Sega for the Sega Genesis. It was released in PAL regions on June 21, North America two days later on June 23, and in Japan the following month. The player controls Sonic, a hedgehog who can run at supersonic speeds. The story follows Sonic as he aims to foil the mad scientist Doctor Eggman's plans to seek the powerful Chaos Emeralds.
+                    Sonic the Hedgehog is a 1991 platform game developed and published by Sega for the Sega Genesis. The player controls Sonic, a hedgehog who can run at supersonic speeds to foil Doctor Eggman's plans to seek the powerful Chaos Emeralds.
                 </p>
                 <p class="mb-4">
                     The gameplay involves collecting rings as a form of health, and a simple control scheme, with jumping and attacking controlled by a single button.
@@ -309,7 +319,7 @@
                     <li>**Developer:** Compile</li>
                     <li>**Genre:** Falling Block Puzzle (Puyo Puyo variant)</li>
                 </ul>
-            `, // END NEW ENTRY
+            `, 
             'sonic2': `
                 <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1">Description</h3>
                 <p class="mb-4 text-lg">
@@ -325,6 +335,23 @@
                     <li>**Release Date:** November 21, 1992 (North America)</li>
                     <li>**Developer:** Sonic Team and Sega Technical Institute (STI)</li>
                     <li>**Key Feature:** Introduction of the Spin Dash and Tails.</li>
+                </ul>
+            `,
+            'knuckles_in_sonic2': `
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1">Description: Lock-On: Sonic 2 + Knuckles</h3>
+                <p class="mb-4 text-lg">
+                    Knuckles in Sonic 2 is the result of using the patented Lock-On Technology to combine the *Sonic the Hedgehog 2* cartridge with the *Sonic & Knuckles* cartridge. This combination replaces Sonic and Tails with Knuckles the Echidna as the sole playable character.
+                </p>
+                <p class="mb-4">
+                    Playing as Knuckles gives you new abilities—gliding and climbing—that allow access to completely new routes and secrets within the classic Sonic 2 levels, radically changing the gameplay and exploration.
+                </p>
+
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1 mt-6">Details</h3>
+                <ul class="list-disc list-inside space-y-1 text-sm ml-4">
+                    <li>**Platform:** SEGA Genesis / Mega Drive (Combined Cartridges)</li>
+                    <li>**Release Date:** 1994 (Via Lock-On)</li>
+                    <li>**Developer:** Sonic Team and STI</li>
+                    <li>**Key Feature:** Play as Knuckles in all Sonic 2 zones.</li>
                 </ul>
             `,
             'spinball': `
@@ -545,15 +572,18 @@
             const modalTitleElement = modal.querySelector('#modal-title');
             const detailsContentElement = document.getElementById('modal-details-content');
             
-            if (!modal || !game || !content) {
-                 console.error("Modal element, game data, or content not found for ID:", gameId);
+            if (!modal || !game) {
+                 console.error("Modal element or game data not found for ID:", gameId);
                  return;
             }
+            
+            // Note: If content is missing (like for the new 'Knuckles in Sonic 2' before it was added), use a placeholder
+            const finalContent = content || `<h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1">Description</h3><p class="mb-4 text-lg">Detailed information for this title is currently unavailable. Prepare to play!</p>`;
 
             // 1. Set dynamic content
             modalTitleElement.textContent = game.title;
             videoIframe.src = game.youtubeEmbedSrc;
-            detailsContentElement.innerHTML = content; // Inject the specific description
+            detailsContentElement.innerHTML = finalContent; // Inject the specific description
             
             // 2. Set dynamic links
             playButton.setAttribute('onclick', `launchGame('${game.url}', '${game.title}', false)`);
@@ -785,10 +815,9 @@
     </script>
 
     <!-- Main Content Wrapper (Contains Header, Nav, and Game Hub) -->
-    <!-- The header and warning messages have been removed per user request -->
     <div id="main-content-wrapper" class="max-w-7xl mx-auto p-4 sm:p-8 rounded-xl bg-sonic-dark/90 shadow-2xl">
 
-        <!-- Navigation Tabs Section - UPDATED to include SEGA 32X -->
+        <!-- Navigation Tabs Section -->
         <nav class="flex flex-wrap justify-center gap-3 mb-12 max-w-5xl mx-auto">
             <!-- Genesis is the default active console tab -->
             <button class="nav-tab active-tab" data-target="genesis-section" onclick="switchTab('genesis-section')">GENESIS</button>
@@ -805,13 +834,12 @@
             <div id="genesis-section" class="game-section">
                 <h2 class="text-4xl font-bold text-center mb-10 text-white neon-glow">SEGA Genesis / Mega Drive Collection</h2>
                 
-                <!-- Games Collection Grid (Genesis Titles) - UPDATED with Mean Bean Machine -->
+                <!-- Games Collection Grid (Genesis Titles) -->
                 <section class="flex flex-wrap justify-center gap-6 mb-12">
 
-                    <!-- Game Card 1: Sonic the Hedgehog (1991) - CLICKABLE -->
+                    <!-- Game Card 1: Sonic the Hedgehog (1991) -->
                     <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('sonic1')">
                         <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
-                            <!-- This requires 'Sonic1.jpg' to be in the same folder as index.html -->
                             <img src="Sonic1.jpg" 
                                 alt="Sonic the Hedgehog (1991) Box Art" 
                                 class="w-full h-full object-cover"
@@ -822,10 +850,9 @@
                         </div>
                     </div>
 
-                    <!-- Game Card: Dr. Robotnik's Mean Bean Machine (1993) - NEW CARD -->
+                    <!-- Game Card: Dr. Robotnik's Mean Bean Machine (1993) -->
                     <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('mean_bean')">
                         <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
-                            <!-- Placeholder for Mean Bean Machine Box Art -->
                             <img src="MeanBeanMachine.jpg" 
                                 alt="Dr. Robotnik's Mean Bean Machine (1993) Box Art" 
                                 class="w-full h-full object-cover"
@@ -836,10 +863,9 @@
                         </div>
                     </div>
 
-                    <!-- Game Card: Sonic Eraser (1991) - CLICKABLE -->
+                    <!-- Game Card: Sonic Eraser (1991) -->
                     <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('sonic_eraser')">
                         <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
-                            <!-- Placeholder for Sonic Eraser Box Art -->
                             <img src="SonicEraser.jpg" 
                                 alt="Sonic Eraser (1991) Box Art" 
                                 class="w-full h-full object-cover"
@@ -850,10 +876,9 @@
                         </div>
                     </div>
                     
-                    <!-- NEW Game Card: Blue Spheres (Lock-On Bonus) - CLICKABLE -->
+                    <!-- Game Card: Blue Spheres (Lock-On Bonus) -->
                     <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('blue_spheres')">
                         <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
-                            <!-- Placeholder for Blue Spheres Box Art -->
                             <img src="BlueSpheres.jpg" 
                                 alt="Blue Spheres (Lock-On Bonus) Box Art" 
                                 class="w-full h-full object-cover"
@@ -865,10 +890,9 @@
                     </div>
 
 
-                    <!-- Game Card 2: Sonic the Hedgehog 2 (1992) - CLICKABLE -->
+                    <!-- Game Card 2: Sonic the Hedgehog 2 (1992) -->
                     <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('sonic2')">
                         <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
-                            <!-- This requires 'Sonic2.jpg' to be in the same folder as index.html -->
                             <img src="Sonic2.jpg" 
                                 alt="Sonic the Hedgehog 2 (1992) Box Art" 
                                 class="w-full h-full object-cover"
@@ -879,10 +903,23 @@
                         </div>
                     </div>
                     
-                    <!-- Game Card 3: Sonic Spinball (1993) - CLICKABLE -->
+                    <!-- NEW GAME CARD: Knuckles in Sonic 2 (S2 Lock-On) -->
+                    <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('knuckles_in_sonic2')">
+                        <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
+                            <!-- Image Fallback added for KIS2.jpg -->
+                            <img src="KIS2.jpg" 
+                                alt="Knuckles in Sonic 2 (S2 Lock-On) Box Art" 
+                                class="w-full h-full object-cover"
+                                onerror="this.onerror=null;this.src='https://placehold.co/150x225/FF6347/FFFFFF?text=Knuckles+in+S2';">
+                            <div class="absolute top-2 left-2 bg-black/70 px-2 py-1 text-xs font-bold text-sonic-neon rounded-md tracking-wider">
+                                LOCK-ON
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Game Card 3: Sonic Spinball (1993) -->
                     <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('spinball')">
                         <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
-                            <!-- This requires 'SonicSpinball.jpg' to be in the same folder as index.html -->
                             <img src="SonicSpinball.jpg" 
                                 alt="Sonic Spinball (1993) Box Art" 
                                 class="w-full h-full object-cover"
@@ -893,10 +930,9 @@
                         </div>
                     </div>
 
-                    <!-- Game Card 4: Sonic the Hedgehog 3 (1994) - CLICKABLE -->
+                    <!-- Game Card 4: Sonic the Hedgehog 3 (1994) -->
                     <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('sonic3')">
                         <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
-                            <!-- This requires 'Sonic3.jpg' to be in the same folder as index.html -->
                             <img src="Sonic3.jpg" 
                                 alt="Sonic the Hedgehog 3 (1994) Box Art" 
                                 class="w-full h-full object-cover"
@@ -907,10 +943,9 @@
                         </div>
                     </div>
 
-                    <!-- Game Card 5: Sonic & Knuckles (1994) - CLICKABLE CARD -->
+                    <!-- Game Card 5: Sonic & Knuckles (1994) -->
                     <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('sonic_knuckles')">
                         <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
-                            <!-- This requires 'SonicKnuckles.jpg' to be in the same folder as index.html -->
                             <img src="SonicKnuckles.jpg" 
                                 alt="Sonic & Knuckles (1994) Box Art" 
                                 class="w-full h-full object-cover"
@@ -921,10 +956,9 @@
                         </div>
                     </div>
                     
-                    <!-- Game Card 6: Sonic 3 & Knuckles (1994) - CLICKABLE CARD -->
+                    <!-- Game Card 6: Sonic 3 & Knuckles (1994) -->
                     <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('sonic3_knuckles')">
                         <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
-                            <!-- This requires 'Sonic3Knuckles.jpg' to be in the same folder as index.html -->
                             <img src="Sonic3Knuckles.jpg" 
                                 alt="Sonic 3 & Knuckles (1994) Box Art" 
                                 class="w-full h-full object-cover"
@@ -935,10 +969,9 @@
                         </div>
                     </div>
 
-                    <!-- Game Card 7: Sonic 3D Blast (1996) - CLICKABLE CARD -->
+                    <!-- Game Card 7: Sonic 3D Blast (1996) -->
                     <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('sonic3d')">
                         <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
-                            <!-- This requires 'Sonic3DBlast.jpg' to be in the same folder as index.html -->
                             <img src="Sonic3DBlast.jpg" 
                                 alt="Sonic 3D Blast (1996) Box Art" 
                                 class="w-full h-full object-cover"
@@ -962,10 +995,9 @@
                 <!-- Games Collection Grid (SEGA CD Titles) -->
                 <section class="flex flex-wrap justify-center gap-6 mb-12">
 
-                    <!-- Game Card 8: Sonic CD (1993) - Clickable -->
+                    <!-- Game Card 8: Sonic CD (1993) -->
                     <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('sonicCD')">
                         <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
-                            <!-- This requires 'SonicCD.jpg' to be in the same folder as index.html -->
                             <img src="SonicCD.jpg" 
                                 alt="Sonic CD (1993) Box Art" 
                                 class="w-full h-full object-cover"
@@ -978,17 +1010,16 @@
                 </section>
             </div>
             
-            <!-- SEGA 32X Section (NEW TAB CONTENT) -->
+            <!-- SEGA 32X Section -->
             <div id="sega-32x-section" class="game-section hidden">
                 <h2 class="text-4xl font-bold text-center mb-10 text-white neon-glow">SEGA 32X Collection</h2>
                 
                 <!-- Games Collection Grid (32X Titles) -->
                 <section class="flex flex-wrap justify-center gap-6 mb-12">
 
-                    <!-- NEW Game Card: Knuckles Chaotix (1995) - CLICKABLE -->
+                    <!-- Game Card: Knuckles Chaotix (1995) -->
                     <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('knuckles_chaotix')">
                         <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
-                            <!-- Placeholder for Knuckles Chaotix Box Art -->
                             <img src="KnucklesChaotix.jpg" 
                                 alt="Knuckles Chaotix (1995) Box Art" 
                                 class="w-full h-full object-cover"
@@ -1009,10 +1040,9 @@
                 <!-- Games Collection Grid (Game Gear Titles) -->
                 <section class="flex flex-wrap justify-center gap-6">
 
-                    <!-- Game Card 9: Sonic the Hedgehog (8-bit) - NEW CARD -->
+                    <!-- Game Card 9: Sonic the Hedgehog (8-bit) -->
                     <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('sonic1_gg')">
                         <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
-                            <!-- This requires 'Sonic1GG.jpg' (or a placeholder) to be in the same folder as index.html -->
                             <img src="Sonic1GG.jpg" 
                                 alt="Sonic the Hedgehog (1991) 8-bit Box Art" 
                                 class="w-full h-full object-cover"
@@ -1127,7 +1157,6 @@
                 </div>
 
                 <!-- Description Section Injection Point -->
-                <!-- The content here is now injected dynamically by the showGameDetails function -->
                 <div id="modal-details-content">
                     <!-- Content will be inserted here by JS based on the game clicked -->
                 </div>
