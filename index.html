@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sonic Mega Collection Plus</title>
+    
+    <!-- FAVICON ADDED: Uses the specified plus.png image -->
+    <link rel="icon" href="plus.png" type="image/png">
+    
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load Inter Font (Google's suggested clean sans-serif, matching the image style) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <!-- Custom Tailwind Configuration for Dark/Neon Theme -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'sonic-dark': '#0A0A0A', // Almost black background
+                        'sonic-neon': '#06B6D4', // Cyan/Teal for glow effect
+                        'sonic-orange': '#F97316', // Orange for warning text
+                        'sonic-amber': '#FBBF24', // Amber for technical warnings
+                    },
+                    fontFamily: {
+                        // Reverting to a standard, readable font family
+                        sans: ['Inter', 'system-ui', 'sans-serif'], 
+                        mono: ['Consolas', 'Monospace'], 
+                    },
+                    
+                },
+            }
+        }
+    </script>
+    <style>
+        /* Ensuring full height for better presentation */
+        html, body {
+            height: 100%;
+            margin: 0;
+            scroll-behavior: auto;
+        }
+        
+        /* Removing old pixel font size overrides for readability */
+        body {
+            font-size: 16px; /* Resetting to standard size */
+        }
+
+        /* Custom CSS for the neon glow effect on titles */
+        .neon-glow {
+            text-shadow: 0 0 10px rgba(6, 182, 212, 0.8), 0 0 20px rgba(6, 182, 212, 0.6);
+            color: #06B6D4;
+        }
+        
+        /* === 1. Style for the EMULATOR PLAYER (Large, Fixed Height) === */
+        .emulator-player-box {
+            position: relative;
+            width: 100%;
+            height: 70vh; /* Fixed height for the main playing experience */
+            max-height: 800px;
+        }
+        /* When in fullscreen, override to take up the whole screen */
+        .emulator-player-box:fullscreen {
+            height: 100vh;
+            max-height: none;
+            width: 100vw;
+            background-color: #000; /* Black background in fullscreen mode */
+        }
+        .emulator-player-box iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* === 2. Style for the YOUTUBE TRAILER (16:9 Aspect Ratio) === */
+        .trailer-aspect-16-9 {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%; /* Forces 16:9 ratio (9 / 16 = 0.5625) */
+            height: 0; /* Necessary for the padding-top trick */
+        }
+        .trailer-aspect-16-9 iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Base inactive style for nav buttons */
+        .nav-tab {
+            @apply px-4 py-2 text-sm font-semibold rounded-full border-2 transition duration-150;
+        }
+        /* Inactive appearance */
+        .inactive-tab {
+            @apply bg-gray-700/50 text-gray-300 border-gray-600 hover:bg-gray-700/70;
+        }
+        /* Active appearance (Neon style) */
+        .active-tab {
+            @apply bg-sonic-neon/30 text-white border-sonic-neon hover:bg-sonic-neon/50 shadow-md shadow-sonic-neon/30;
+        }
+        
+        /* Transition style for the game sections to enable fade effect */
+        .game-section {
+            transition: opacity 0.3s ease-in-out; /* 300ms transition for smooth fading */
+        }
+    </style>
+</head>
+<!-- BACKGROUND IMAGE ADDED HERE: mania.gif is now the full background -->
+<body style="background-image: url('mania.gif'); background-size: cover; background-attachment: fixed; background-position: center;" class="text-white font-sans min-h-screen p-4 sm:p-8">
+
+    <!-- Background Music Player (Stardust Speedway) -->
+    <audio id="background-audio" loop>
+       
+        <!-- The browser looks for 'stardustspeedway.mp3' in the SAME FOLDER as index.html -->
+        <source src="stardustspeedway.mp3" type="audio/mp3"> 
+        Your browser does not support the audio element.
+    </audio>
+
+    <!-- Global Audio Control Button (Top Right Fixed) -->
+    <div class="fixed top-4 right-4 z-50">
+        <button id="audio-toggle-button" onclick="toggleAudio()" class="px-4 py-2 text-xs font-semibold rounded-full bg-gray-800/80 hover:bg-gray-700/90 transition duration-150 shadow-lg border border-gray-700">
+            <!-- Icon is dynamically set in JS -->
+            <svg id="audio-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <!-- Path will be overwritten by JS updateAudioButtonUI -->
+            </svg>
+            <span id="audio-status-text">Audio Status</span>
+        </button>
+    </div>
+
+    <script>
+        // Global variable to track the currently visible section element
+        let currentSectionElement = null; 
+        const TRANSITION_DURATION = 300; // Match this to the CSS transition duration (0.3s)
+
+        // Declare global functions and element references
+        let modal = null; 
+        let mainContentWrapper = null; 
+        let gamePlayerSection = null; 
+        let gameIframe = null; 
+        let fullscreenButton = null; 
+        let audio = null; // Audio element reference
+        let nowPlayingTitle = null; // Reference to the h2 title in game player section
+        let videoIframe = null; // Reference to the YouTube iframe in the modal
+        
+        // --- AUDIO CONTROL LOGIC ---
+        let isAudioMuted = false;
+        let played = false; // Tracks if the user has interacted to enable audio once
+        let audioButton = null;
+        let audioIcon = null;
+        let audioStatusText = null;
+        
+        // Define the game data supported for launching (UPDATED with Dr. Robotnik's Mean Bean Machine)
+        const GAME_DATA = {
+            'sonic1': {
+                url: 'https://megadrive-emulator.com/game/?game=Sonic_the_Hedgehog.bin',
+                title: 'Sonic the Hedgehog (1991)',
+                youtubeEmbedSrc: 'https://www.youtube.com/embed/FbfZ6iDPQVc?autoplay=0&controls=1',
+                type: 'genesis',
+            },
+            'sonic_eraser': {
+                url: 'https://megadrive-emulator.com/game/?game=Sonic_Eraser.bin', 
+                title: 'Sonic Eraser (1991)',
+                youtubeEmbedSrc: 'https://www.youtube.com/embed/g2qJpI5R37k?autoplay=0&controls=1', 
+                type: 'genesis',
+            },
+            'blue_spheres': { // NEW ENTRY
+                // Using Sonic 3 & Knuckles as it contains the Blue Spheres special stage
+                url: 'https://megadrive-emulator.com/game/?game=Sonic_3_and_Knuckles.bin', 
+                title: 'Blue Spheres (Lock-On Bonus)',
+                youtubeEmbedSrc: 'https://www.youtube.com/embed/rGgQp9i9m6k?autoplay=0&controls=1', // Blue Spheres specific video
+                type: 'genesis',
+            },
+            'mean_bean': { // NEW ENTRY: Dr. Robotnik's Mean Bean Machine
+                url: 'https://megadrive-emulator.com/game/?game=Dr_Robotniks_Mean_Bean_Machine.bin',
+                title: 'Dr. Robotnik\'s Mean Bean Machine (1993)',
+                youtubeEmbedSrc: 'https://www.youtube.com/embed/qgqPqX-NqI8?autoplay=0&controls=1',
+                type: 'genesis',
+            },
+            'sonic2': { 
+                url: 'https://megadrive-emulator.com/game/?game=Sonic_the_Hedgehog_2_JUE.bin',
+                title: 'Sonic the Hedgehog 2 (1992)',
+                youtubeEmbedSrc: 'https://www.youtube.com/embed/zOQJm495b5Q?autoplay=0&controls=1', 
+                type: 'genesis',
+            },
+            'spinball': { 
+                url: 'https://megadrive-emulator.com/game/?game=Sonic_Spinball.bin',
+                title: 'Sonic Spinball (1993)',
+                youtubeEmbedSrc: 'https://www.youtube.com/embed/5U77y4yC72E?autoplay=0&controls=1', 
+                type: 'genesis',
+            },
+            'sonic3': { 
+                url: 'https://megadrive-emulator.com/game/?game=Sonic_the_Hedgehog_3.bin',
+                title: 'Sonic the Hedgehog 3 (1994)',
+                youtubeEmbedSrc: 'https://www.youtube.com/embed/9tJ6u6j4Fv8?autoplay=0&controls=1', 
+                type: 'genesis',
+            },
+            'sonic_knuckles': { 
+                url: 'https://megadrive-emulator.com/game/?game=Sonic_and_Knuckles.bin',
+                title: 'Sonic & Knuckles (1994)',
+                youtubeEmbedSrc: 'https://www.youtube.com/embed/5H5z5J1B1nI?autoplay=0&controls=1', 
+                type: 'genesis',
+            },
+            'sonic3_knuckles': { 
+                url: 'https://megadrive-emulator.com/game/?game=Sonic_3_and_Knuckles.bin',
+                title: 'Sonic 3 & Knuckles (1994)',
+                youtubeEmbedSrc: 'https://www.youtube.com/embed/5H5z5J1B1nI?autoplay=0&controls=1', 
+                type: 'genesis',
+            },
+            'sonic3d': { 
+                url: 'https://megadrive-emulator.com/game/?game=Sonic_3D_Blast_F.bin',
+                title: 'Sonic 3D Blast (1996)',
+                youtubeEmbedSrc: 'https://www.youtube.com/embed/sL6w_jL1Q70?autoplay=0&controls=1', 
+                type: 'genesis',
+            },
+            'sonicCD': { 
+                url: 'https://www.retrogames.cc/embed/40754-sonic-cd.html', 
+                title: 'Sonic CD (1993)',
+                youtubeEmbedSrc: 'https://www.youtube.com/embed/g2qJpI5R37k?autoplay=0&controls=1', 
+                type: 'sega-cd',
+            },
+            'knuckles_chaotix': {
+                url: 'https://emulator.games/roms/sega-32x/knuckles-chaotix/', 
+                title: 'Knuckles Chaotix (1995)',
+                youtubeEmbedSrc: 'https://www.youtube.com/embed/5U77y4yC72E?autoplay=0&controls=1', 
+                type: 'sega-32x',
+            },
+            'sonic1_gg': {
+                url: 'https://master-system-emulator.com/game/?game=Sonic_the_Hedgehog_GG.bin', 
+                title: 'Sonic 1 (8-bit) - Game Gear',
+                youtubeEmbedSrc: 'https://www.youtube.com/embed/Vv8t2yJ98l8?autoplay=0&controls=1', 
+                type: 'game-gear',
+            }
+        };
+
+        // Static HTML content for descriptions, inserted into the modal (UPDATED with Mean Bean Machine content)
+        const GAME_CONTENT = {
+            'sonic1': `
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1">Description</h3>
+                <p class="mb-4 text-lg">
+                    Sonic the Hedgehog is a 1991 platform game developed and published by Sega for the Sega Genesis. It was released in PAL regions on June 21, North America two days later on June 23, and in Japan the following month. The player controls Sonic, a hedgehog who can run at supersonic speeds. The story follows Sonic as he aims to foil the mad scientist Doctor Eggman's plans to seek the powerful Chaos Emeralds.
+                </p>
+                <p class="mb-4">
+                    The gameplay involves collecting rings as a form of health, and a simple control scheme, with jumping and attacking controlled by a single button.
+                </p>
+
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1 mt-6">Details</h3>
+                <ul class="list-disc list-inside space-y-1 text-sm ml-4">
+                    <li>**Platform:** SEGA Genesis / Mega Drive</li>
+                    <li>**Release Date:** June 23, 1991</li>
+                    <li>**Developer:** Sonic Team</li>
+                </ul>
+            `,
+            'sonic_eraser': `
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1">Description</h3>
+                <p class="mb-4 text-lg">
+                    Sonic Eraser is a puzzle game featuring Sonic the Hedgehog, originally released exclusively in Japan via the Sega Channel (a cable TV service). It features typical falling block puzzle mechanics, similar to Columns or Tetris, with Sonic characters.
+                </p>
+                <p class="mb-4">
+                    It was one of the first Sonic games to feature a two-player versus mode.
+                </p>
+
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1 mt-6">Details</h3>
+                <ul class="list-disc list-inside space-y-1 text-sm ml-4">
+                    <li>**Platform:** SEGA Genesis / Mega Drive (Sega Channel Exclusive)</li>
+                    <li>**Release Date:** 1991 (Japan only)</li>
+                    <li>**Developer:** SEGA</li>
+                </ul>
+            `,
+            'blue_spheres': `
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1">Description: The Lock-On Secret</h3>
+                <p class="mb-4 text-lg">
+                    The Blue Spheres mini-game is the secret result of using the Lock-On Technology to connect the *Sonic the Hedgehog 1* cartridge (or any non-Sonic game) onto the *Sonic & Knuckles* cartridge. This unique combination unlocks a standalone puzzle experience.
+                </p>
+
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1 mt-6">Game Mechanics and Rules</h3>
+                <p class="mb-4">
+                    *Blue Spheres* is a pseudo-3D maze game where the primary objective is simple: **clear the field by turning every blue sphere red.**
+                </p>
+                <ul class="list-disc list-inside space-y-2 text-sm ml-4">
+                    <li>**The Goal:** You must touch every blue sphere to turn it red.</li>
+                    <li>**The Danger:** You must **not** touch a red sphere after it has been created. Doing so instantly ends the game.</li>
+                    <li>**Bumper Spheres (Yellow):** These spheres bounce Sonic backward but are otherwise harmless.</li>
+                    <li>**Rings:** Collecting all the Rings on the screen awards a **Perfect** bonus.</li>
+                </ul>
+                <p class="mt-4 text-xs italic text-gray-400">
+                    The locked-on Sonic 1 game allows the player to cycle through 134,217,728 randomly generated variations of the Blue Spheres mini-game.
+                </p>
+            `, 
+            'mean_bean': `
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1">Description: Dr. Robotnik's Puyo Puyo Puzzle!</h3>
+                <p class="mb-4 text-lg">
+                    Dr. Robotnik's Mean Bean Machine is a tile-matching puzzle video game developed by Compile and published by Sega. It is a westernized version of the Japanese game Puyo Puyo, set in the world of the *Adventures of Sonic the Hedgehog* cartoon.
+                </p>
+                <p class="mb-4">
+                    The story follows Dr. Robotnik's plot to kidnap the residents of Beanville and turn them into obedient robots. You must defeat a series of Robotnik's henchmen in puzzle battles by matching groups of four or more colored "Beans" to clear them and drop "Refugee Beans" (garbage blocks) onto your opponent's side.
+                </p>
+
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1 mt-6">Details</h3>
+                <ul class="list-disc list-inside space-y-1 text-sm ml-4">
+                    <li>**Platform:** SEGA Genesis / Mega Drive</li>
+                    <li>**Release Date:** December 1993</li>
+                    <li>**Developer:** Compile</li>
+                    <li>**Genre:** Falling Block Puzzle (Puyo Puyo variant)</li>
+                </ul>
+            `, // END NEW ENTRY
+            'sonic2': `
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1">Description</h3>
+                <p class="mb-4 text-lg">
+                    Sonic the Hedgehog 2 introduced Miles "Tails" Prower, Sonic's two-tailed fox friend, as a permanent sidekick and player two character. The game refined the mechanics of the original, introducing the signature Spin Dash move.
+                </p>
+                <p class="mb-4">
+                    The plot follows Sonic and Tails as they attempt to stop Dr. Robotnik from stealing the Chaos Emeralds to power his ultimate weapon, the Death Egg. It features famous levels like Emerald Hill Zone and Chemical Plant Zone, and pioneered a new sense of speed for the series.
+                </p>
+
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1 mt-6">Details</h3>
+                <ul class="list-disc list-inside space-y-1 text-sm ml-4">
+                    <li>**Platform:** SEGA Genesis / Mega Drive</li>
+                    <li>**Release Date:** November 21, 1992 (North America)</li>
+                    <li>**Developer:** Sonic Team and Sega Technical Institute (STI)</li>
+                    <li>**Key Feature:** Introduction of the Spin Dash and Tails.</li>
+                </ul>
+            `,
+            'spinball': `
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1">Description</h3>
+                <p class="mb-4 text-lg">
+                    Sonic Spinball is a unique pinball game that reimagines the Sonic universe. Dr. Robotnik has converted Mt. Mobius into the "Pinball Defense System," a giant pinball machine used to turn captured animals into robots.
+                </p>
+                <p class="mb-4">
+                    Sonic must transform into a pinball himself, traversing four massive pinball tables filled with flippers, bumpers, and traps to collect the Chaos Emeralds and defeat Robotnik's device.
+                </p>
+
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1 mt-6">Details</h3>
+                <ul class="list-disc list-inside space-y-1 text-sm ml-4">
+                    <li>**Platform:** SEGA Genesis / Mega Drive</li>
+                    <li>**Release Date:** November 23, 1993 (North America)</li>
+                    <li>**Developer:** Sega Technical Institute (STI)</li>
+                    <li>**Genre:** Pinball / Platformer Hybrid</li>
+                </ul>
+            `,
+            'sonic3': `
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1">Description</h3>
+                <p class="mb-4 text-lg">
+                    Sonic the Hedgehog 3 directly continues the story from Sonic 2, following Sonic and Tails as they crash land on Angel Island. Here, they encounter Knuckles the Echidna, who has been tricked by Dr. Robotnik into believing Sonic is the villain.
+                </p>
+                <p class="mb-4">
+                    The game introduced three new Elemental Shields—the Fire Shield, Bubble Shield, and Lightning Shield—each granting unique abilities. It also featured a save system for the first time in the series, allowing players to resume progress later.
+                </p>
+
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1 mt-6">Details</h3>
+                <ul class="list-disc list-inside space-y-1 text-sm ml-4">
+                    <li>**Platform:** SEGA Genesis / Mega Drive</li>
+                    <li>**Release Date:** February 2, 1994 (North America)</li>
+                    <li>**Developer:** Sonic Team</li>
+                    <li>**Key Feature:** Introduction of Knuckles and Elemental Shields.</li>
+                </ul>
+            `,
+            'sonic_knuckles': `
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1">Description</h3>
+                <p class="mb-4 text-lg">
+                    Sonic & Knuckles is notable for its 'Lock-On Technology', a feature that allowed players to connect the cartridge to *Sonic 2* or *Sonic 3*. This created new versions of the games, such as *Sonic 3 & Knuckles*, which allowed players to play as Knuckles in the Sonic 3 zones.
+                </p>
+                <p class="mb-4">
+                    The gameplay focuses on exploration and platforming, requiring Sonic to defeat enemy robots to release the Flickies, which then follow him. Sonic must guide them to a large ring to complete the level.
+                </p>
+
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1 mt-6">Details</h3>
+                <ul class="list-disc list-inside space-y-1 text-sm ml-4">
+                    <li>**Platform:** SEGA Genesis / Mega Drive</li>
+                    <li>**Release Date:** October 18, 1994 (North America)</li>
+                    <li>**Developer:** Sonic Team and Sega Technical Institute (STI)</li>
+                    <li>**Key Feature:** Lock-On Technology and Knuckles as a fully playable character.</li>
+                </ul>
+            `,
+            'sonic3_knuckles': `
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1">Description</h3>
+                <p class="mb-4 text-lg">
+                    Sonic 3 & Knuckles is the definitive version of the Genesis trilogy, created by combining the full *Sonic the Hedgehog 3* and *Sonic & Knuckles* games via Lock-On Technology. This combined game allows the player to experience the entire 13-zone story arc, including the Hyper Sonic and Super Knuckles transformations.
+                </p>
+                <p class="mb-4">
+                    This version allows Sonic, Tails, and Knuckles to play through every level of both games, offering unique routes and secrets for Knuckles in the Sonic 3 levels. It is widely considered one of the greatest 2D platformers ever made.
+                </p>
+
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1 mt-6">Details</h3>
+                <ul class="list-disc list-inside space-y-1 text-sm ml-4">
+                    <li>**Platform:** SEGA Genesis / Mega Drive (Combined Cartridges)</li>
+                    <li>**Release Date:** 1994 (Via Lock-On)</li>
+                    <li>**Developer:** Sonic Team and Sega Technical Institute (STI)</li>
+                    <li>**Key Feature:** The full, epic conclusion of the original Genesis trilogy.</li>
+                </ul>
+            `,
+            'sonic3d': `
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1">Description</h3>
+                <p class="mb-4 text-lg">
+                    Sonic 3D Blast (or Sonic 3D: Flickies' Island) is an isometric platform game released late in the Genesis's life cycle. It moves away from the traditional 2D side-scrolling to a pseudo-3D perspective, where Sonic must collect Flickies (small, colorful birds) to save them from Dr. Robotnik's latest scheme.
+                </p>
+                <p class="mb-4">
+                    The gameplay focuses on exploration and platforming, requiring Sonic to defeat enemy robots to release the Flickies, which then follow him. Sonic must guide them to a large ring to complete the level.
+                </p>
+
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1 mt-6">Details</h3>
+                <ul class="list-disc list-inside space-y-1 text-sm ml-4">
+                    <li>**Platform:** SEGA Genesis / Mega Drive (Also released on Saturn)</li>
+                    <li>**Release Date:** November 1996 (North America)</li>
+                    <li>**Developer:** Traveller's Tales</li>
+                    <li>**Genre:** Isometric Platformer</li>
+                </ul>
+            `,
+            'sonicCD': `
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1">Description</h3>
+                <p class="mb-4 text-lg">
+                    Sonic CD is the classic title for the Sega CD add-on, introducing Metal Sonic and Amy Rose. Sonic must save the past, present, and future of Little Planet, as well as rescue Amy Rose from his evil double, Metal Sonic. The game is famous for its unique time-travel mechanic and two distinct soundtracks (Japanese/European and North American).
+                </p>
+                
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1 mt-6">Details</h3>
+                <ul class="list-disc list-inside space-y-1 text-sm ml-4">
+                    <li>**Platform:** SEGA CD</li>
+                    <li>**Release Date:** September 23, 1993 (NA)</li>
+                    <li>**Developer:** Sonic Team</li>
+                    <li>**Main Characters:** Sonic, Tails (hidden), Amy Rose (debut), Metal Sonic (debut), Dr. Robotnik</li>
+                </ul>
+            `,
+            'knuckles_chaotix': `
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1">Description</h3>
+                <p class="mb-4 text-lg">
+                    Knuckles' Chaotix is a platform game and the only title in the Sonic series released for the Sega 32X console add-on. It introduced the Chaotix crew: Vector the Crocodile, Espio the Chameleon, Charmy Bee, and Mighty the Armadillo.
+                </p>
+                <p class="mb-4">
+                    The core mechanic involves a "tether" system, where the two characters are linked by a constantly stretching rubber band, requiring cooperative movement and unique physics.
+                </p>
+
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1 mt-6">Details</h3>
+                <ul class="list-disc list-inside space-y-1 text-sm ml-4">
+                    <li>**Platform:** SEGA 32X</li>
+                    <li>**Release Date:** April 21, 1995 (North America)</li>
+                    <li>**Developer:** Sonic Team</li>
+                    <li>**Key Feature:** The Ring Power and tether mechanic.</li>
+                </ul>
+            `,
+            'sonic1_gg': `
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1">Description</h3>
+                <p class="mb-4 text-lg">
+                    This is the 8-bit version of Sonic the Hedgehog, released simultaneously for the Master System and Game Gear. While it shares the same name, it features entirely different level designs and gameplay mechanics tailored for the 8-bit hardware.
+                </p>
+                <p class="mb-4">
+                    It's a simpler, often more challenging take on the original story, substituting certain zones with unique counterparts and lacking the iconic Green Hill Zone loop-de-loops.
+                </p>
+
+                <h3 class="text-2xl font-semibold text-sonic-neon mb-3 border-b border-gray-700 pb-1 mt-6">Details</h3>
+                <ul class="list-disc list-inside space-y-1 text-sm ml-4">
+                    <li>**Platform:** SEGA Game Gear / Master System</li>
+                    <li>**Release Date:** October 25, 1991 (Europe)</li>
+                    <li>**Developer:** Ancient</li>
+                    <li>**Key Feature:** Entirely unique 8-bit level designs.</li>
+                </ul>
+            `,
+        }
+
+
+        function updateAudioButtonUI() {
+            if (!audioButton) return;
+            // The audio element itself is muted
+            isAudioMuted = audio.muted; 
+
+            if (isAudioMuted) {
+                // Mute icon (X over speaker)
+                audioIcon.innerHTML = `<path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.616 16.59a1 1 0 00.707.293 1 1 0 00.707-1.707L16.293 14l1.82-1.82a1 1 0 000-1.414L16.293 11l1.82-1.82a1 1 0 000-1.414L16.293 7l1.82-1.82a1 1 0 00-1.414-1.414L14 8.586l-1.82-1.82a1 1 0 00-1.414 1.414L12.586 10l-1.82 1.82a1 1 0 001.414 1.414L14 11.414l1.82 1.82a1 1 0 000 1.414L16.293 14l-1.82 1.82a1 1 0 00.143.35z" clip-rule="evenodd" />`; 
+                audioStatusText.textContent = 'Audio Muted';
+                audioButton.classList.remove('text-sonic-neon/90', 'border-sonic-neon');
+                audioButton.classList.add('text-gray-400', 'border-gray-600');
+            } else {
+                // Sound on icon
+                audioIcon.innerHTML = `<path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.616 16.59a1 1 0 00.707.293 1 1 0 00.707-1.707L16.293 14l1.82-1.82a1 1 0 000-1.414L16.293 11l1.82-1.82a1 1 0 000-1.414L16.293 7l1.82-1.82a1 1 0 00-1.414-1.414L14 8.586l-1.82-1.82a1 1 0 00-1.414 1.414L12.586 10l-1.82 1.82a1 1 0 001.414 1.414L14 11.414l1.82 1.82a1 1 0 000 1.414L16.293 14l-1.82 1.82a1 1 0 00.143.35z" clip-rule="evenodd" transform="translate(0 -2)"/>`; 
+                audioStatusText.textContent = 'Audio On';
+                audioButton.classList.remove('text-gray-400', 'border-gray-600');
+                audioButton.classList.add('text-sonic-neon/90', 'border-sonic-neon');
+            }
+        }
+        
+        function toggleAudio() {
+            audio.muted = !audio.muted;
+            if (!audio.muted && !played) {
+                 // If unmuting for the first time, try to play
+                 attemptPlay();
+            } else if (!audio.muted && played && audio.paused) {
+                 // If unmuting after being paused (e.g., from an error or manually), try playing
+                 audio.play().catch(error => console.warn("Audio play error after unmuting:", error));
+            }
+            updateAudioButtonUI();
+        }
+
+        // --- FULLSCREEN LOGIC ---
+        function toggleFullscreen() {
+            const playerBox = document.querySelector('.emulator-player-box');
+            
+            if (!document.fullscreenElement) {
+                if (playerBox.requestFullscreen) {
+                    playerBox.requestFullscreen().catch(err => {
+                        console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                    });
+                }
+            }
+            // Fix: Check for specific browser prefixed methods for broader compatibility
+            else if (document.exitFullscreen || document.mozCancelFullScreen || document.webkitExitFullscreen || document.msExitFullscreen) {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.mozCancelFullScreen) { /* Firefox */
+                    document.mozCancelFullScreen();
+                } else if (document.webkitExitFullscreen) { /* Chrome, Safari and Opera */
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) { /* IE/Edge */
+                    document.msExitFullscreen();
+                }
+            }
+        }
+        
+        function updateFullscreenButton() {
+            if (fullscreenButton) {
+                if (document.fullscreenElement) {
+                    fullscreenButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1 -mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-8V7a1 1 0 112 0v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H7a1 1 0 110-2h2z" clip-rule="evenodd" transform="rotate(45 10 10)"/></svg> Exit Fullscreen`;
+                } else {
+                    fullscreenButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1 -mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v2a1 1 0 01-2 0V5a4 4 0 014-4h2a1 1 0 010 2H5zm0 14a2 2 0 00-2-2v-2a1 1 0 112 0v2h2a1 1 0 110 2H5zm10-14a2 2 0 012 2v2a1 1 0 102 0V5a4 4 0 00-4-4h-2a1 1 0 100 2h2zm2 10a2 2 0 00-2 2v2h-2a1 1 0 110-2h2v-2a1 1 0 112 0z"/></svg> Fullscreen`;
+                }
+            }
+        }
+        
+        // Listen for fullscreen changes to update the button text
+        document.addEventListener('fullscreenchange', updateFullscreenButton);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+        document.addEventListener('mozfullscreenchange', updateFullscreenButton);
+        document.addEventListener('msfullscreenchange', updateFullscreenButton);
+
+        // Function to show the modal
+        function showGameDetails(gameId) {
+            const game = GAME_DATA[gameId];
+            const content = GAME_CONTENT[gameId]; // Get the specific content fragment
+            const playButton = modal.querySelector('#play-now-button');
+            const newTabLink = modal.querySelector('#new-tab-link');
+            const modalTitleElement = modal.querySelector('#modal-title');
+            const detailsContentElement = document.getElementById('modal-details-content');
+            
+            if (!modal || !game || !content) {
+                 console.error("Modal element, game data, or content not found for ID:", gameId);
+                 return;
+            }
+
+            // 1. Set dynamic content
+            modalTitleElement.textContent = game.title;
+            videoIframe.src = game.youtubeEmbedSrc;
+            detailsContentElement.innerHTML = content; // Inject the specific description
+            
+            // 2. Set dynamic links
+            playButton.setAttribute('onclick', `launchGame('${game.url}', '${game.title}', false)`);
+            newTabLink.href = game.url; 
+            
+            // 3. Show the modal
+            modal.classList.remove('hidden');
+        }
+
+        // Function to close the modal
+        function closeGameDetails() {
+            if (modal) {
+                // IMPORTANT: Stop the video when closing the modal by clearing the iframe source
+                videoIframe.src = ''; 
+                modal.classList.add('hidden');
+            }
+        }
+        
+        // Function to handle game launch (with or without transition)
+        function launchGame(url, title, isDirectLaunch) {
+            closeGameDetails(); // Close the modal if it's open
+
+            const executeLaunch = () => {
+                // Set the title for the game player section
+                nowPlayingTitle.textContent = `Now Playing: ${title}`;
+                document.title = title; // Update browser title
+
+                // Set up the game iframe and show the game player section
+                gameIframe.src = url;
+                gamePlayerSection.classList.remove('hidden');
+                
+                // Stop background music
+                audio.pause();
+                
+                updateFullscreenButton();
+            };
+
+            if (isDirectLaunch) {
+                // Direct launch: Hide hub immediately, show player immediately
+                mainContentWrapper.classList.add('hidden');
+                mainContentWrapper.style.opacity = '0'; 
+                gamePlayerSection.style.opacity = '1';
+                executeLaunch();
+
+            } else {
+                // Transition launch: Fade out hub first
+                mainContentWrapper.style.opacity = '0'; 
+                
+                setTimeout(() => {
+                    mainContentWrapper.classList.add('hidden');
+                    mainContentWrapper.style.opacity = ''; 
+
+                    executeLaunch(); // Execute launch setup
+
+                    gamePlayerSection.style.opacity = '0';
+                    // Force repaint/reflow
+                    void gamePlayerSection.offsetWidth; 
+                    // Fade in the player
+                    gamePlayerSection.style.opacity = '1';
+
+                }, TRANSITION_DURATION);
+            }
+        }
+
+        // Function to transition from the game player view back to the hub view
+        function backToHub() {
+             // 1. Clean up URL parameter if present
+             if (window.location.search) {
+                 const newUrl = window.location.pathname + window.location.hash;
+                 window.history.pushState({}, '', newUrl);
+                 document.title = "Sonic Mega Collection Plus"; // Reset browser title
+             }
+             
+             // 2. Check if currently in fullscreen and exit if so
+             if (document.fullscreenElement) {
+                document.exitFullscreen();
+             }
+
+             // 3. Hide the game player section
+            gamePlayerSection.style.opacity = '0';
+            
+            setTimeout(() => {
+                gamePlayerSection.classList.add('hidden');
+                gamePlayerSection.style.opacity = ''; 
+
+                // Clear iframe source to stop any audio/resource usage
+                gameIframe.src = '';
+                
+                // 4. Show the main content wrapper
+                mainContentWrapper.classList.remove('hidden');
+                mainContentWrapper.style.opacity = '0';
+                
+                // Force repaint/reflow
+                void mainContentWrapper.offsetWidth; 
+                
+                // Fade in the hub
+                mainContentWrapper.style.opacity = '1';
+
+                 // Attempt to resume background music if it's not muted globally
+                if (!audio.muted) {
+                    audio.play().catch(error => {
+                        console.warn("Background audio resume blocked:", error);
+                    });
+                }
+                
+            }, TRANSITION_DURATION);
+        }
+
+        // --- Tab Switching Logic (used only for the main hub navigation) ---
+        function switchTab(sectionId) {
+            const targetTab = document.querySelector(`.nav-tab[data-target="${sectionId}"]`);
+            const targetSection = document.getElementById(sectionId);
+            
+            // 1. Update Tab Visuals
+            if (targetTab) {
+                document.querySelectorAll('.nav-tab').forEach(tab => {
+                    tab.classList.remove('active-tab');
+                    tab.classList.add('inactive-tab');
+                });
+                targetTab.classList.remove('inactive-tab');
+                targetTab.classList.add('active-tab');
+            }
+
+            // Check if we are already on the target section
+            if (currentSectionElement === targetSection) {
+                return;
+            }
+
+            // --- Fade Out Logic ---
+            if (currentSectionElement) {
+                currentSectionElement.style.opacity = '0'; // Start fade out
+                
+                setTimeout(() => {
+                    // After fade-out time, hide the old element via Tailwind's 'hidden' class
+                    currentSectionElement.classList.add('hidden');
+                    currentSectionElement.style.opacity = ''; // Clean up inline opacity for future reuse
+                    
+                    // --- Fade In Logic ---
+                    if (targetSection) {
+                        targetSection.classList.remove('hidden');
+                        targetSection.style.opacity = '0'; // Set opacity to 0 just before showing
+                        
+                        // Force repaint/reflow to apply opacity: 0 *before* setting to 1
+                        void targetSection.offsetWidth; 
+                        
+                        targetSection.style.opacity = '1'; // Start fade-in
+                        currentSectionElement = targetSection;
+                    } else {
+                        currentSectionElement = null; 
+                    }
+
+                }, TRANSITION_DURATION); // Wait 300ms for the transition duration
+            } else if (targetSection) {
+                // Initial load/first click: just fade in instantly
+                targetSection.classList.remove('hidden');
+                targetSection.style.opacity = '0';
+                void targetSection.offsetWidth; 
+                targetSection.style.opacity = '1';
+                currentSectionElement = targetSection;
+            }
+        }
+
+
+        // --- Background Audio Initial Play Attempt ---
+        function attemptPlay() {
+            if (!played) {
+                audio.volume = 0.3; 
+                
+                audio.play().then(() => {
+                    played = true;
+                    updateAudioButtonUI(); 
+                    document.removeEventListener('click', attemptPlay);
+                    document.removeEventListener('touchstart', attemptPlay);
+                }).catch(error => {
+                    console.warn("Autoplay blocked. User interaction required:", error);
+                    // If blocked, ensure it's muted visually until the user interacts
+                    audio.muted = true;
+                    updateAudioButtonUI();
+                });
+            }
+        }
+
+        // Attach listeners to the whole document to catch the first click/touch interaction
+        document.addEventListener('click', attemptPlay);
+        document.removeEventListener('touchstart', attemptPlay); // Removed touchstart to avoid duplicate triggers
+
+        // Initialize: This runs after the entire HTML document is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+             // Initialize global variables
+             modal = document.getElementById('game-details-modal');
+             mainContentWrapper = document.getElementById('main-content-wrapper');
+             gamePlayerSection = document.getElementById('game-player-section');
+             gameIframe = document.getElementById('game-iframe');
+             fullscreenButton = document.getElementById('fullscreen-button');
+             audio = document.getElementById('background-audio');
+             audioButton = document.getElementById('audio-toggle-button');
+             audioIcon = document.getElementById('audio-icon');
+             audioStatusText = document.getElementById('audio-status-text');
+             nowPlayingTitle = document.getElementById('now-playing-title');
+             videoIframe = document.getElementById('youtube-video-iframe'); // Get reference to the video iframe
+
+
+             // 1. Hide all sections
+            document.querySelectorAll('.game-section').forEach(section => {
+                section.classList.add('hidden');
+                section.style.opacity = '0'; 
+            });
+             gamePlayerSection.classList.add('hidden');
+             gamePlayerSection.style.opacity = '0';
+
+             // 2. Initialize the audio button state
+             audio.muted = true;
+             updateAudioButtonUI();
+
+             // --- CHECK FOR DIRECT LAUNCH PARAMETER ---
+             const urlParams = new URLSearchParams(window.location.search);
+             const launchGameId = urlParams.get('game');
+
+             if (launchGameId && GAME_DATA[launchGameId]) {
+                 // Direct launch flow: Skip the hub, go straight to the game
+                 const game = GAME_DATA[launchGameId];
+                 launchGame(game.url, game.title, true); // true for isDirectLaunch
+             } else {
+                 // Normal hub flow: Show the GENESIS collection by default
+                 switchTab('genesis-section');
+             }
+             // --- END DIRECT LAUNCH CHECK ---
+        });
+    </script>
+
+    <!-- Main Content Wrapper (Contains Header, Nav, and Game Hub) -->
+    <!-- The header and warning messages have been removed per user request -->
+    <div id="main-content-wrapper" class="max-w-7xl mx-auto p-4 sm:p-8 rounded-xl bg-sonic-dark/90 shadow-2xl">
+
+        <!-- Navigation Tabs Section - UPDATED to include SEGA 32X -->
+        <nav class="flex flex-wrap justify-center gap-3 mb-12 max-w-5xl mx-auto">
+            <!-- Genesis is the default active console tab -->
+            <button class="nav-tab active-tab" data-target="genesis-section" onclick="switchTab('genesis-section')">GENESIS</button>
+            <button class="nav-tab inactive-tab" data-target="sega-cd-section" onclick="switchTab('sega-cd-section')">SEGA CD</button>
+            <button class="nav-tab inactive-tab" data-target="sega-32x-section" onclick="switchTab('sega-32x-section')">SEGA 32X</button>
+            <button class="nav-tab inactive-tab" data-target="game-gear-section" onclick="switchTab('game-gear-section')">GAME GEAR</button>
+            <button class="nav-tab inactive-tab" data-target="pc-section" onclick="switchTab('pc-section')">PC</button>
+        </nav>
+
+        <!-- GAMES CONTENT WRAPPER -->
+        <div class="space-y-16">
+
+            <!-- GENESIS Section -->
+            <div id="genesis-section" class="game-section">
+                <h2 class="text-4xl font-bold text-center mb-10 text-white neon-glow">SEGA Genesis / Mega Drive Collection</h2>
+                
+                <!-- Games Collection Grid (Genesis Titles) - UPDATED with Mean Bean Machine -->
+                <section class="flex flex-wrap justify-center gap-6 mb-12">
+
+                    <!-- Game Card 1: Sonic the Hedgehog (1991) - CLICKABLE -->
+                    <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('sonic1')">
+                        <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
+                            <!-- This requires 'Sonic1.jpg' to be in the same folder as index.html -->
+                            <img src="Sonic1.jpg" 
+                                alt="Sonic the Hedgehog (1991) Box Art" 
+                                class="w-full h-full object-cover"
+                                onerror="this.onerror=null;this.src='https://placehold.co/150x225/111111/FFFFFF?text=Sonic+1+Box';">
+                            <div class="absolute top-2 left-2 bg-black/70 px-2 py-1 text-xs font-bold text-sonic-neon rounded-md tracking-wider">
+                                GENESIS
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Game Card: Dr. Robotnik's Mean Bean Machine (1993) - NEW CARD -->
+                    <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('mean_bean')">
+                        <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
+                            <!-- Placeholder for Mean Bean Machine Box Art -->
+                            <img src="MeanBeanMachine.jpg" 
+                                alt="Dr. Robotnik's Mean Bean Machine (1993) Box Art" 
+                                class="w-full h-full object-cover"
+                                onerror="this.onerror=null;this.src='https://placehold.co/150x225/111111/FFFFFF?text=Mean+Bean+Box';">
+                            <div class="absolute top-2 left-2 bg-black/70 px-2 py-1 text-xs font-bold text-sonic-neon rounded-md tracking-wider">
+                                GENESIS
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Game Card: Sonic Eraser (1991) - CLICKABLE -->
+                    <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('sonic_eraser')">
+                        <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
+                            <!-- Placeholder for Sonic Eraser Box Art -->
+                            <img src="SonicEraser.jpg" 
+                                alt="Sonic Eraser (1991) Box Art" 
+                                class="w-full h-full object-cover"
+                                onerror="this.onerror=null;this.src='https://placehold.co/150x225/111111/FFFFFF?text=Sonic+Eraser+Box';">
+                            <div class="absolute top-2 left-2 bg-black/70 px-2 py-1 text-xs font-bold text-sonic-neon rounded-md tracking-wider">
+                                GENESIS
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- NEW Game Card: Blue Spheres (Lock-On Bonus) - CLICKABLE -->
+                    <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('blue_spheres')">
+                        <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
+                            <!-- Placeholder for Blue Spheres Box Art -->
+                            <img src="BlueSpheres.jpg" 
+                                alt="Blue Spheres (Lock-On Bonus) Box Art" 
+                                class="w-full h-full object-cover"
+                                onerror="this.onerror=null;this.src='https://placehold.co/150x225/3B82F6/FFFFFF?text=Blue+Spheres+Bonus';">
+                            <div class="absolute top-2 left-2 bg-black/70 px-2 py-1 text-xs font-bold text-sonic-neon rounded-md tracking-wider">
+                                BONUS GAME
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Game Card 2: Sonic the Hedgehog 2 (1992) - CLICKABLE -->
+                    <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('sonic2')">
+                        <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
+                            <!-- This requires 'Sonic2.jpg' to be in the same folder as index.html -->
+                            <img src="Sonic2.jpg" 
+                                alt="Sonic the Hedgehog 2 (1992) Box Art" 
+                                class="w-full h-full object-cover"
+                                onerror="this.onerror=null;this.src='https://placehold.co/150x225/111111/FFFFFF?text=Sonic+2+Box';">
+                            <div class="absolute top-2 left-2 bg-black/70 px-2 py-1 text-xs font-bold text-sonic-neon rounded-md tracking-wider">
+                                GENESIS
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Game Card 3: Sonic Spinball (1993) - CLICKABLE -->
+                    <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('spinball')">
+                        <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
+                            <!-- This requires 'SonicSpinball.jpg' to be in the same folder as index.html -->
+                            <img src="SonicSpinball.jpg" 
+                                alt="Sonic Spinball (1993) Box Art" 
+                                class="w-full h-full object-cover"
+                                onerror="this.onerror=null;this.src='https://placehold.co/150x225/111111/FFFFFF?text=Spinball+Box';">
+                            <div class="absolute top-2 left-2 bg-black/70 px-2 py-1 text-xs font-bold text-sonic-neon rounded-md tracking-wider">
+                                GENESIS
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Game Card 4: Sonic the Hedgehog 3 (1994) - CLICKABLE -->
+                    <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('sonic3')">
+                        <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
+                            <!-- This requires 'Sonic3.jpg' to be in the same folder as index.html -->
+                            <img src="Sonic3.jpg" 
+                                alt="Sonic the Hedgehog 3 (1994) Box Art" 
+                                class="w-full h-full object-cover"
+                                onerror="this.onerror=null;this.src='https://placehold.co/150x225/111111/FFFFFF?text=Sonic+3+Box';">
+                            <div class="absolute top-2 left-2 bg-black/70 px-2 py-1 text-xs font-bold text-sonic-neon rounded-md tracking-wider">
+                                GENESIS
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Game Card 5: Sonic & Knuckles (1994) - CLICKABLE CARD -->
+                    <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('sonic_knuckles')">
+                        <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
+                            <!-- This requires 'SonicKnuckles.jpg' to be in the same folder as index.html -->
+                            <img src="SonicKnuckles.jpg" 
+                                alt="Sonic & Knuckles (1994) Box Art" 
+                                class="w-full h-full object-cover"
+                                onerror="this.onerror=null;this.src='https://placehold.co/150x225/111111/FFFFFF?text=S%26K+Box';">
+                            <div class="absolute top-2 left-2 bg-black/70 px-2 py-1 text-xs font-bold text-sonic-neon rounded-md tracking-wider">
+                                GENESIS
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Game Card 6: Sonic 3 & Knuckles (1994) - CLICKABLE CARD -->
+                    <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('sonic3_knuckles')">
+                        <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
+                            <!-- This requires 'Sonic3Knuckles.jpg' to be in the same folder as index.html -->
+                            <img src="Sonic3Knuckles.jpg" 
+                                alt="Sonic 3 & Knuckles (1994) Box Art" 
+                                class="w-full h-full object-cover"
+                                onerror="this.onerror=null;this.src='https://placehold.co/150x225/111111/FFFFFF?text=S3%26K+Box';">
+                            <div class="absolute top-2 left-2 bg-black/70 px-2 py-1 text-xs font-bold text-sonic-neon rounded-md tracking-wider">
+                                GENESIS
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Game Card 7: Sonic 3D Blast (1996) - CLICKABLE CARD -->
+                    <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('sonic3d')">
+                        <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
+                            <!-- This requires 'Sonic3DBlast.jpg' to be in the same folder as index.html -->
+                            <img src="Sonic3DBlast.jpg" 
+                                alt="Sonic 3D Blast (1996) Box Art" 
+                                class="w-full h-full object-cover"
+                                onerror="this.onerror=null;this.src='https://placehold.co/150x225/111111/FFFFFF?text=3D+Blast+Box';">
+                            <div class="absolute top-2 left-2 bg-black/70 px-2 py-1 text-xs font-bold text-sonic-neon rounded-md tracking-wider">
+                                GENESIS
+                            </div>
+                        </div>
+                    </div>
+
+
+                </section>
+                
+            </div>
+
+
+            <!-- SEGA CD Section -->
+            <div id="sega-cd-section" class="game-section hidden">
+                <h2 class="text-4xl font-bold text-center mb-10 text-white neon-glow">SEGA CD Collection</h2>
+                
+                <!-- Games Collection Grid (SEGA CD Titles) -->
+                <section class="flex flex-wrap justify-center gap-6 mb-12">
+
+                    <!-- Game Card 8: Sonic CD (1993) - Clickable -->
+                    <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('sonicCD')">
+                        <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
+                            <!-- This requires 'SonicCD.jpg' to be in the same folder as index.html -->
+                            <img src="SonicCD.jpg" 
+                                alt="Sonic CD (1993) Box Art" 
+                                class="w-full h-full object-cover"
+                                onerror="this.onerror=null;this.src='https://placehold.co/150x225/111111/FFFFFF?text=Sonic+CD+Box';">
+                            <div class="absolute top-2 left-2 bg-black/70 px-2 py-1 text-xs font-bold text-sonic-neon rounded-md tracking-wider">
+                                SEGA CD
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            
+            <!-- SEGA 32X Section (NEW TAB CONTENT) -->
+            <div id="sega-32x-section" class="game-section hidden">
+                <h2 class="text-4xl font-bold text-center mb-10 text-white neon-glow">SEGA 32X Collection</h2>
+                
+                <!-- Games Collection Grid (32X Titles) -->
+                <section class="flex flex-wrap justify-center gap-6 mb-12">
+
+                    <!-- NEW Game Card: Knuckles Chaotix (1995) - CLICKABLE -->
+                    <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('knuckles_chaotix')">
+                        <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
+                            <!-- Placeholder for Knuckles Chaotix Box Art -->
+                            <img src="KnucklesChaotix.jpg" 
+                                alt="Knuckles Chaotix (1995) Box Art" 
+                                class="w-full h-full object-cover"
+                                onerror="this.onerror=null;this.src='https://placehold.co/150x225/111111/FFFFFF?text=Chaotix+Box';">
+                            <div class="absolute top-2 left-2 bg-black/70 px-2 py-1 text-xs font-bold text-sonic-neon rounded-md tracking-wider">
+                                SEGA 32X
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            
+            
+            <!-- GAME GEAR Section -->
+            <div id="game-gear-section" class="game-section hidden">
+                <h2 class="text-4xl font-bold text-center mb-10 text-white neon-glow">SEGA Game Gear / Master System Collection</h2>
+                
+                <!-- Games Collection Grid (Game Gear Titles) -->
+                <section class="flex flex-wrap justify-center gap-6">
+
+                    <!-- Game Card 9: Sonic the Hedgehog (8-bit) - NEW CARD -->
+                    <div class="flex flex-col items-center bg-transparent group cursor-pointer hover:scale-105 transition-transform duration-300 w-[45%] sm:w-[30%] md:w-[22%] lg:w-[200px]" onclick="showGameDetails('sonic1_gg')">
+                        <div class="relative w-full aspect-[2/3] shadow-2xl shadow-black/80 rounded-lg overflow-hidden border-2 border-gray-800 hover:border-sonic-neon/80">
+                            <!-- This requires 'Sonic1GG.jpg' (or a placeholder) to be in the same folder as index.html -->
+                            <img src="Sonic1GG.jpg" 
+                                alt="Sonic the Hedgehog (1991) 8-bit Box Art" 
+                                class="w-full h-full object-cover"
+                                onerror="this.onerror=null;this.src='https://placehold.co/150x225/111111/FFFFFF?text=Sonic+1+GG+Box';">
+                            <div class="absolute top-2 left-2 bg-black/70 px-2 py-1 text-xs font-bold text-sonic-neon rounded-md tracking-wider">
+                                GAME GEAR
+                            </div>
+                        </div>
+                    </div>
+                    
+                </section>
+                
+            </div>
+            
+            <!-- PC Section (Placeholder) -->
+             <div id="pc-section" class="game-section hidden">
+                <h2 class="text-4xl font-bold text-center mb-8 text-white neon-glow">PC Games Collection</h2>
+                <p class="text-center text-gray-400">Content for PC Games will go here.</p>
+            </div>
+            
+        </div>
+        <!-- END GAMES CONTENT WRAPPER -->
+    </div>
+    <!-- END Main Content Wrapper -->
+
+
+    <!-- Game Player Section (New, hidden by default) -->
+    <div id="game-player-section" class="max-w-7xl mx-auto hidden pt-4 game-section p-4 sm:p-8 rounded-xl bg-sonic-dark/90 shadow-2xl">
+        <div class="flex justify-between items-center mb-4">
+             <!-- ID added for dynamic title update -->
+             <h2 id="now-playing-title" class="text-3xl font-bold text-white">Now Playing: Game Title</h2>
+            <div class="flex space-x-3">
+                
+                <!-- NEW FULLSCREEN BUTTON -->
+                <button id="fullscreen-button" onclick="toggleFullscreen()" class="px-6 py-2 text-sm font-semibold rounded-full bg-gray-600/80 hover:bg-gray-700 transition duration-150 shadow-md shadow-gray-700/50 text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1 -mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-8V7a1 1 0 112 0v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H7a1 1 0 110-2h2z" clip-rule="evenodd" transform="rotate(45 10 10)"/></svg> Exit Fullscreen
+                </button>
+                
+                <!-- Back to Collection Button -->
+                <button onclick="backToHub()" class="px-6 py-2 text-sm font-semibold rounded-full bg-sonic-neon/80 hover:bg-sonic-neon transition duration-150 shadow-md shadow-sonic-neon/50 text-black">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-2 -mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                    </svg>
+                    Back to Collection
+                </button>
+            </div>
+        </div>
+        <!-- UPDATED CLASS HERE: using emulator-player-box -->
+        <div class="emulator-player-box rounded-xl overflow-hidden shadow-2xl shadow-sonic-neon/30 border-4 border-sonic-neon">
+            <iframe 
+                id="game-iframe"
+                src="" 
+                frameborder="0" 
+                allowfullscreen 
+                allow="autoplay; gyroscope; fullscreen">
+            </iframe>
+        </div>
+        <p class="text-center text-gray-500 mt-4 text-sm">
+            Note: The emulator is loaded from an external site. Press `ESC` or the Fullscreen button again to exit full screen mode.
+        </p>
+    </div>
+
+
+    <!-- Game Details Modal (Hidden by Default) -->
+    <div id="game-details-modal" class="fixed inset-0 bg-sonic-dark/95 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden" onclick="closeGameDetails()">
+        
+        <!-- Modal Content Box -->
+        <div class="bg-gray-900 border-2 border-sonic-neon p-6 sm:p-8 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+            
+            <!-- Close Button -->
+            <div class="flex justify-end">
+                <button onclick="closeGameDetails()" class="text-sonic-neon hover:text-white transition duration-150 text-3xl font-bold leading-none">&times;</button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <!-- Video Section -->
+                <div class="flex flex-col">
+                    <!-- Dynamic Title Injection Point -->
+                    <h2 id="modal-title" class="text-4xl font-bold neon-glow mb-4">Game Title</h2> 
+                    
+                    <!-- UPDATED CLASS HERE: using trailer-aspect-16-9 -->
+                    <div class="trailer-aspect-16-9 rounded-lg overflow-hidden border border-gray-700">
+                        <!-- YouTube Embed Iframe. The src is set dynamically in JS. -->
+                        <iframe 
+                            id="youtube-video-iframe" 
+                            src="" 
+                            frameborder="0" 
+                            allowfullscreen 
+                            
+                            <!-- **CRITICAL FIX: Explicitly define sandbox permissions for video playback** -->
+                            sandbox="allow-scripts allow-same-origin allow-popups allow-presentation allow-forms"
+                            
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
+                        </iframe>
+                    </div>
+                    <div class="mt-4 flex justify-center space-x-4">
+                         <!-- Button Text: Play Now. This button's onclick is set dynamically in showGameDetails() -->
+                         <button id="play-now-button" class="px-6 py-2 text-lg font-semibold rounded-full bg-green-600 hover:bg-green-500 transition duration-150 shadow-md shadow-green-600/50 text-white">
+                            Play Now
+                         </button>
+                         
+                         <!-- New Link: Open in New Tab -->
+                         <a id="new-tab-link" href="#" target="_blank" rel="noopener noreferrer" class="px-6 py-2 text-lg font-semibold rounded-full bg-blue-600 hover:bg-blue-500 transition duration-150 shadow-md shadow-blue-600/50 text-white flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                              <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                            </svg>
+                            Open in New Tab
+                         </a>
+                    </div>
+                </div>
+
+                <!-- Description Section Injection Point -->
+                <!-- The content here is now injected dynamically by the showGameDetails function -->
+                <div id="modal-details-content">
+                    <!-- Content will be inserted here by JS based on the game clicked -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
